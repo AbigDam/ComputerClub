@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from datetime import datetime
 from datetime import date
 import os
@@ -8,9 +8,14 @@ import PyPDF2
 import re
 import calendar
 import json
+
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
 
+@app.route("/.well-known/<path:filename>")
+def well_known(filename):
+    return send_from_directory("static/.well-known", filename)
 
 def get_todays_date():
     """Return today's date in a readable format"""

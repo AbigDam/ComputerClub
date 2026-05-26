@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.onrender.computerclub_t97t.twa",
+        "sha256_cert_fingerprints": ["E3:A8:95:FA:87:CA:D7:3A:4E:48:F8:45:3F:64:96:9A:D4:76:DC:71:03:B7:58:92:6D:3D:C6:31:A3:93:A8:7C"]
+      }
+    }]
