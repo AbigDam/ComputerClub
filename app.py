@@ -142,8 +142,6 @@ def get_upcoming_events():
     events.extend(get_events_from_ics("https://calendar.google.com/calendar/ical/sufsdny.org_1ngptog7qjb30l6ui6hm5ht3ds%40group.calendar.google.com/public/basic.ics"))
     events.extend(get_events_from_ics("https://calendar.google.com/calendar/ical/sufsdny.org_fh27vfmov68e0adc5dsmodmq3g%40group.calendar.google.com/public/basic.ics"))
     events.extend(get_events_from_ics("https://calendar.google.com/calendar/ical/sufsdny.org_6jlotfuojmgn8lij5d1ipe89i4@group.calendar.google.com/public/basic.ics"))
-
-
     return events
 
 
