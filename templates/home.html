@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Spackenkill High School{% endblock %}
+
+{% block content %}
+<div class="home-header">
+    <h2>Spackenkill Informational App</h2>
+    <p class="subtitle">Daily information</p>
+</div>
+
+<div class="info-grid">
+    <div class="info-card">
+        <h3>Today's Date</h3>
+        <p class="info-value">{{ date }}</p>
+    </div>
+
+    <div class="info-card">
+        <h3>Day Type</h3>
+        <p class="info-value">{{ odd_even }} Day</p>
+    </div>
+</div>
+
+<div class="menu-section">
+    <div class="menu-card">
+        <h3>Breakfast Menu</h3>
+        <p class="menu-items">{{ breakfast }}</p>
+    </div>
+
+    <div class="menu-card">
+        <h3>Lunch Menu</h3>
+        <p class="menu-items">{{ lunch }}</p>
+    </div>
+</div>
+<style>
+    .calendar {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        text-align: center;
+      }
+    .calendar-day {
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 8px;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        background: #f9f9f9;
+      }
+    .calendar-day .date {
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+    .event {
+        font-size: 0.85em;
+        color: #333;
+        margin-top: 2px;
+      }
+    .calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-align: center;
+      }
+     </style>
+    <div class="calendar-header">
+      <div>Sun</div>
+      <div>Mon</div>
+      <div>Tue</div>
+      <div>Wed</div>
+      <div>Thu</div>
+      <div>Fri</div>
+      <div>Sat</div>
+    </div>
+
+    <div class="calendar">
+      {% for week in calendar %}
+        {% for day in week %}
+          <div class="calendar-day">
+            {% if day %}
+              <div class="date">{{ day.day }}</div>
+              {% for event in events if event.date == day.date %}
+                <div class="event">{{ event.event }}</div>
+              {% endfor %}
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Course Selector - School Website{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Course Selector</h2>
+    <p class="subtitle">Select your courses for the upcoming semester</p>
+</div>
+<head>
+    <style>
+        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .course-card { border: 1px solid #ddd; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+        .course-title { font-weight: bold; font-size: 16px; }
+        .score { float: right; font-size: 12px; color: #666; }
+        .prereq, .credit, .cost { font-size: 13px; margin-top: 6px; }
+        .credit { color: #2c5f2d; }
+        .cost { color: #8a4b08; }
+        select, input { width: 100%; padding: 6px; margin-top: 4px; }
+        label { font-size: 14px; }
+    
+        .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+    }
+    .close-btn {
+        float: right;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    </style>
+</head>
+<body>
+    
+<div id="courseModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle"></h3>
+        <p id="modalDescription"></p>
+    </div>
+</div>
+
+<div class="filters">
+    <div>
+        <label>Grade</label>
+        <select id="grade">
+            <option value="">Any</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Difficulty Factor</label>
+        <select id="factor">
+            <option value="">Any</option>
+            <option value="8">8 (Normal)</option>
+            <option value="9">9 (Hard / Honors Level)</option>
+            <option value="10">10 (Very Hard / College Level)</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Semester</label>
+        <select id="semester">
+            <option value="">Any</option>
+            <option value="A">All Year</option>
+            <option value="F">Fall</option>
+            <option value="S">Spring</option>
+            <option value="B">Both Fall & Spring</option>
+        </select>
+    </div>
+
+    <div>
+        <label><input type="checkbox" id="collegeCreditOnly"> College Credit</label>
+    </div>
+
+    <div>
+        <label>Subject</label>
+        <select id="subject">
+            <option value="">Any</option>
+            <option value="Math">Math</option>
+            <option value="Science">Science</option>
+            <option value="Social Studies">Social Studies</option>
+            <option value="Art">Art</option>
+            <option value="Foreign Language">Foreign Language</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Graduation Requirement</label>
+        <select id="requirement">
+            <option value="">Any</option>
+            <option value="Math">Math</option>
+            <option value="Science">Science</option>
+            <option value="Social Studies">Social Studies</option>
+            <option value="Fine Arts">Fine Arts</option>
+            <option value="Foreign Language">Foreign Language</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Search Course</label>
+        <input type="text" id="search" placeholder="Search by name...">
+    </div>
+</div>
+
+<div id="courseResults"></div>
+
+<script>
+let courses = [];
+let courseCodeMap = {};
+
+fetch("/static/courses.csv")
+    .then(r => r.text())
+    .then(data => {
+        courses = parseCSV(data);
+        courses.forEach(c => {
+            if (c["Course Code"]) {
+                courseCodeMap[c["Course Code"].trim()] = c["Course Name"];
+            }
+        });
+        applyFilters();
+    });
+
+function parseCSV(text) {
+    const lines = text.split("\n");
+    const headers = lines[0].split(",");
+
+    return lines.slice(1).filter(l => l.trim() !== "").map(line => {
+        const values = line.split(",");
+        let obj = {};
+        headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
+        return obj;
+    });
+}
+
+function hasCollegeCredit(course) {
+    const ap = course["AP Credit"];
+    const dcc = course["DCC Credit"];
+    const ua = course["UAlbany Credit"];
+    return (ap && ap !== "0") || (dcc && dcc !== "0") || (ua && ua !== "0");
+}
+
+function semesterMatches(courseSemester, selected) {
+    if (!selected) return true;
+    if (!courseSemester) return false;
+    if (courseSemester === "A") return true;
+    if (selected === "F" && (courseSemester === "F" || courseSemester === "B")) return true;
+    if (selected === "S" && (courseSemester === "S" || courseSemester === "B")) return true;
+    return courseSemester === selected;
+}
+
+function applyFilters() {
+    const grade = document.getElementById("grade").value;
+    const factor = document.getElementById("factor").value;
+    const semester = document.getElementById("semester").value;
+    const collegeOnly = document.getElementById("collegeCreditOnly").checked;
+    const subject = document.getElementById("subject").value;
+    const requirement = document.getElementById("requirement").value;
+    const search = document.getElementById("search").value.toLowerCase();
+    let scored = courses
+        .map(course => {
+            let score = 0;
+            if (grade && course["Rec. Grade"] === grade) score += 3;
+            if (factor && course["Factor"] === factor) score += 3;
+            if (collegeOnly && hasCollegeCredit(course)) score += 4;
+            if (subject && course["Subject"] === subject) score += 3;
+            if (requirement && course["Graduation Requirement"] === requirement) score += 3;
+            if (search && course["Course Name"]?.toLowerCase().includes(search)) score += 8;
+            if (semester && course["Semester"] == semester) score += 20;
+            return { ...course, score };
+        });
+
+    if (collegeOnly) scored = scored.filter(c => hasCollegeCredit(c));
+
+    scored.sort((a, b) => b.score - a.score);
+    renderCourses(scored);
+}
+
+function renderCourses(list) {
+    const container = document.getElementById("courseResults");
+    container.innerHTML = "";
+
+    list.forEach(course => {
+        const div = document.createElement("div");
+        div.className = "course-card";
+
+        const prereqRaw = course["Pre-Requiesites"] || course["Pre-Requisites"] || "0";
+        const prereqDisplay = formatPrerequisites(prereqRaw);
+
+        const creditDisplay = formatCredit(course);
+        const costDisplay = formatCost(course);
+
+        div.innerHTML = `
+            <div class="course-title">
+                ${course["Course Name"] || ""}
+                <span class="score">Score: ${course.score}</span>
+            </div>
+            <div>Factor ${course["Factor"] || ""} | ${course["Subject"] || ""}</div>
+            <div class="credit"><strong>College Credit:</strong> ${creditDisplay}</div>
+            <div class="cost"><strong>Cost:</strong> ${costDisplay}</div>
+            <div class="prereq"><strong>Pre-Requisites:</strong> ${prereqDisplay}</div>
+        `;
+
+        container.appendChild(div);
+        div.addEventListener("click", function () {
+            openModal(course);
+        });
+    });
+}
+
+function formatCredit(course) {
+    const ap = course["AP Credit"];
+    const dcc = course["DCC Credit"];
+    const ua = course["UAlbany Credit"];
+
+    let parts = [];
+
+    if (ap && ap !== "0") {
+        parts.push("Possible AP Credit depending on performance in class");
+    }
+    if (dcc && dcc !== "0") {
+        parts.push(`${dcc} credits available from DCC`);
+    }
+    if (ua && ua !== "0") {
+        parts.push(`Up to ${ua} credits available from UAlbany`);
+    }
+
+    return parts.length ? parts.join(" | ") : "No College Credit";
+}
+
+function formatCost(course) {
+    const cost = course["Cost"];
+    const optional = course["Cost Optional?"];
+
+    if (!cost || cost === "0" || cost === "N/A") return "No Cost";
+
+    if (optional === "Yes") return `${cost} (Optional)`;
+    if (optional === "No") return `${cost} (Required)`;
+    return `${cost}`;
+}
+
+function formatPrerequisites(prereq) {
+    if (!prereq || prereq === "0") return "None";
+    return prereq.replace(/\d+/g, m => courseCodeMap[m] || m);
+}
+
+["grade","factor","semester","collegeCreditOnly","subject","requirement","search"].forEach(id => {
+    document.getElementById(id)?.addEventListener("change", applyFilters);
+    document.getElementById(id)?.addEventListener("input", applyFilters);
+});
+
+function openModal(course) {
+    document.getElementById("modalTitle").innerText = course["Course Name"] || "";
+    document.getElementById("modalDescription").innerText = course["Description"] || "No description available.";
+    document.getElementById("courseModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("courseModal").style.display = "none";
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById("courseModal");
+    if (event.target === modal) closeModal();
+}
+
+</script>
+
+{% endblock %}
