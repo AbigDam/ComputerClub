@@ -10,8 +10,9 @@
     <nav class="navbar">
         <div class="container">
             <div class="logo">
-                <h1>Spackenkill High School</h1>
-            </div>
+            <img src="/static/Logo.jpg" alt="School Logo">
+            <h1>Spackenkill High School</h1>
+        </div>
             <ul class="nav-links">
                 <li><a href="{{ url_for('home') }}" {% if request.endpoint == 'home' %}class="active"{% endif %}>Home</a></li>
                 <li><a href="{{ url_for('courses') }}" {% if request.endpoint == 'courses' %}class="active"{% endif %}>Course Selector</a></li>

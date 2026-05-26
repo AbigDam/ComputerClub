@@ -1,14 +1,152 @@
 {% extends "base.html" %}
 
-{% block title %}School Clubs - School Website{% endblock %}
+{% block title %}Club Directory - School Website{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>School Clubs</h2>
-    <p class="subtitle">Explore our extracurricular activities and clubs</p>
+    <h2>Club Directory</h2>
+    <p class="subtitle">Browse student clubs and meeting days</p>
 </div>
 
-<div class="placeholder-content">
-    <p>School clubs information coming soon...</p>
+<head>
+</head>
+
+<body>
+
+<div id="clubModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle"></h3>
+        <p id="modalDescription"></p>
+    </div>
 </div>
+
+<div id="clubResults" class="club-grid"></div>
+
+<script>
+let clubs = [];
+
+fetch("/static/clubs.csv")
+    .then(r => r.text())
+    .then(data => {
+        clubs = parseCSV(data);
+        renderClubs(clubs);
+    });
+
+function parseCSV(text) {
+    const lines = text.split("\n").filter(l => l.trim() !== "");
+    const headers = lines[0].split(",").map(h => h.trim());
+
+    return lines.slice(1).map(line => {
+        const values = line.split(",");
+        let obj = {};
+
+        headers.forEach((h, i) => {
+            obj[h] = values[i]?.trim() || "";
+        });
+
+        return obj;
+    });
+}
+
+function renderClubs(list) {
+    const container = document.getElementById("clubResults");
+    container.innerHTML = "";
+
+    list.forEach(club => {
+        const div = document.createElement("div");
+        div.className = "club-card";
+
+        const meetingDays = parseDays(club["Weekly Date"]);
+
+        div.innerHTML = `
+            <div class="club-name">
+                ${club["Club Name"] || ""}
+            </div>
+
+            <div class="advisor">
+                ${club["Advisors"] || ""}
+            </div>
+
+            <div class="days">
+                ${renderDay("M", meetingDays.monday)}
+                ${renderDay("TU", meetingDays.tuesday)}
+                ${renderDay("W", meetingDays.wednesday)}
+                ${renderDay("TH", meetingDays.thursday)}
+                ${renderDay("F", meetingDays.friday)}
+            </div>
+
+            ${meetingDays.varies ? `
+                <div style="margin-top:10px; font-size:13px; opacity:0.7;">
+                    Days vary
+                </div>
+` : ""}
+        `;
+
+        div.addEventListener("click", () => {
+            openModal(club);
+        });
+
+        container.appendChild(div);
+    });
+}
+
+function renderDay(label, active) {
+    return `
+        <div class="day ${active ? "active" : ""}">
+            ${label}
+        </div>
+    `;
+}
+
+function parseDays(dayString) {
+    const raw = (dayString || "").toLowerCase().trim();
+
+    if (raw.includes("days vary")) {
+        return {
+            monday: false,
+            tuesday: false,
+            wednesday: false,
+            thursday: false,
+            friday: false,
+            varies: true
+        };
+    }
+
+    const days = raw
+        .split("|")
+        .map(d => d.trim());
+
+    return {
+        monday: days.includes("mondays"),
+        tuesday: days.includes("tuesdays"),
+        wednesday: days.includes("wednesdays"),
+        thursday: days.includes("thursdays"),
+        friday: days.includes("fridays"),
+        varies: false
+    };
+}
+
+function openModal(club) {
+    document.getElementById("modalTitle").innerText =
+        club["Club Name"] || "";
+
+    document.getElementById("modalDescription").innerText =
+        club["Description"] || "No description available.";
+
+    document.getElementById("clubModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("clubModal").style.display = "none";
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById("clubModal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};
+</script>
+
 {% endblock %}

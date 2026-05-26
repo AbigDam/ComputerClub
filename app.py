@@ -10,7 +10,6 @@ import calendar
 import requests
 import csv
 from io import StringIO
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
 
@@ -39,38 +38,55 @@ def is_odd_or_even_day():
         return "Day type unavailable"
 
 
+
 def extract_text(pdf_path):
-    text = ""
     with open(pdf_path, "rb") as f:
         reader = PyPDF2.PdfReader(f)
-        for page in reader.pages:
-            text += page.extract_text() or ""
+        text = reader.pages[0].extract_text() or ""
+
+    with open("lunch.txt", "w", encoding="utf-8") as file:
+        file.write(text)
 
     return text
 
 
 def get_today_lunch(text):
     today = datetime.now().day
-    index1 = text.find(str(today))
-    index2 = text.find(str(today+1))
-    indexLast = text.find("Bag")
-
-    if index1 == -1:
-        menu = "No lunch found for today"
-    elif index2 == -1:
-        menu = text[index1:indexLast]
-    else:
-        menu = text[index1:index2]
-    menu = menu.replace(str(today), "")
-    return menu
-
+    pattern = r"\n(\d{1,2})\n(.*?)(?=\n\d{1,2}\n|$)"
+    matches = re.findall(pattern, text, re.DOTALL)
+    menu_dict = {}
+    for day, content in matches:
+        menu_dict[int(day)] = content.strip()
+    if today not in menu_dict:
+        return "No lunch found for today"
+    menu = menu_dict[today]
+    lines = [
+        line.strip()
+        for line in menu.splitlines()
+        if line.strip()
+    ]
+    return "\n".join(lines)
 
 def get_lunch_menu():
-
-
-    # Re-upload the lunch pdf every month
-    LUNCH_PATH = "/home/spackweb/App Code/lunch.pdf"
-
+    LUNCH_PATH = "lunch.pdf"
+    now = datetime.now()
+    month_name = now.strftime("%B")  
+    year = now.year
+    if now.month >= 8:
+        school_year = f"{year}-{year + 1}"
+    else:
+        school_year = f"{year - 1}-{year}"
+    pdf_name = f"SHS_{month_name}_Menu_Carb_Counter.pdf"
+    url = (
+        "https://cdnsm5-ss18.sharpschool.com/"
+        "UserFiles/Servers/Server_269531/File/"
+        f"Departments/Food%20Services/{school_year}/{pdf_name}"
+    )
+    output_file = LUNCH_PATH
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(output_file, "wb") as file:
+            file.write(response.content)
     pdf_text = extract_text(LUNCH_PATH)
     lunch_today = get_today_lunch(pdf_text)
     return lunch_today
@@ -155,9 +171,14 @@ def download_spreadsheet(url, output):
 
 @app.route('/courses')
 def courses():
-    """Course Selector page (placeholder)"""
-    download_spreadsheet("https://docs.google.com/spreadsheets/d/1uyv8i91GqHdRurJf3JMm1bZxOfQwnRZkRjhpEytvMuc/export?format=csv&gid=0#gid=0", "/home/spackweb/App Code/static/courses.csv")
+    download_spreadsheet("https://docs.google.com/spreadsheets/d/1uyv8i91GqHdRurJf3JMm1bZxOfQwnRZkRjhpEytvMuc/export?format=csv&gid=0#gid=0", "static/courses.csv")
     return render_template('courses.html')
+
+@app.route('/clubs')
+def clubs():
+    download_spreadsheet("https://docs.google.com/spreadsheets/d/1uyv8i91GqHdRurJf3JMm1bZxOfQwnRZkRjhpEytvMuc/export?format=csv&gid=1463261106#gid=1463261106", "static/clubs.csv")
+    return render_template('clubs.html')
+
 
 
 
@@ -167,25 +188,17 @@ def home():
     now = datetime.now()
     current_year = now.year
     current_month = now.month
-
+    month = now.strftime("%B")
     context = {
         'date': get_todays_date(),
         'odd_even': is_odd_or_even_day(),
         'lunch': get_lunch_menu(),
         'breakfast': get_breakfast_menu(),
         'events': get_upcoming_events(),
+        'month':month,
         'calendar': build_calendar(current_year, current_month)
     }
     return render_template('home.html', **context)
-
-
-
-
-
-@app.route('/clubs')
-def clubs():
-    """School Clubs page (placeholder)"""
-    return render_template('clubs.html')
 
 
 
