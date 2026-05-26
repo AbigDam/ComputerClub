@@ -7,7 +7,7 @@ import requests
 import PyPDF2
 import re
 import calendar
-
+import json
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
 
@@ -106,6 +106,10 @@ def get_breakfast_menu():
     }
     return menu.get(day, "No breakfast served today.")
 
+from datetime import datetime, date
+import requests
+import re
+
 def get_events_from_ics(url):
     response = requests.get(url)
     response.raise_for_status()
@@ -114,7 +118,12 @@ def get_events_from_ics(url):
     lines = text.splitlines()
     current_event = None
 
+    now = datetime.now()
+    current_year = now.year
+    current_month = now.month
+
     events_list = []
+
     for line in lines:
         line = line.strip()
 
@@ -123,8 +132,14 @@ def get_events_from_ics(url):
 
         elif line == "END:VEVENT" and current_event is not None:
             if 'date' in current_event and 'event' in current_event:
-                events_list.append(current_event)
+                event_date = current_event['date']
+
+                # FILTER HERE
+                if event_date.year == current_year and event_date.month == current_month:
+                    events_list.append(current_event)
+
             current_event = None
+
         elif current_event is not None:
             if line.startswith("SUMMARY:"):
                 summary = line[len("SUMMARY:"):].strip()
@@ -133,10 +148,10 @@ def get_events_from_ics(url):
                 current_event['event'] = summary
 
             elif line.startswith("DTSTART"):
-
                 match = re.search(r':(\d{8})', line)
                 if not match:
                     continue
+
                 date_part = match.group(1)
 
                 try:
@@ -180,24 +195,69 @@ def clubs():
 
 
 
+
+CACHE_FILE = "daily_home_cache.json"
+
+
+def load_cached_context():
+    if not os.path.exists(CACHE_FILE):
+        return None
+
+    try:
+        with open(CACHE_FILE, "r") as f:
+            data = json.load(f)
+
+        if data.get("date_key") == datetime.now().strftime("%Y-%m-%d"):
+            return data.get("context")
+
+    except Exception:
+        return None
+
+    return None
+
+
+def make_json_safe(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, dict):
+        return {k: make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [make_json_safe(i) for i in obj]
+    return obj
+
+def save_cached_context(context):
+    data = {
+        "date_key": datetime.now().strftime("%Y-%m-%d"),
+        "context": make_json_safe(context)
+    }
+    with open(CACHE_FILE, "w") as f:
+        json.dump(data, f)
+
+
 @app.route('/')
 def home():
-    """Main page with date, odd/even, lunch, breakfast, and events"""
+    """Main page with daily cached context"""
+    cached = load_cached_context()
+    if cached:
+        return render_template("home.html", **cached)
+
     now = datetime.now()
     current_year = now.year
     current_month = now.month
     month = now.strftime("%B")
+
     context = {
         'date': get_todays_date(),
         'odd_even': is_odd_or_even_day(),
         'lunch': get_lunch_menu(),
         'breakfast': get_breakfast_menu(),
         'events': get_upcoming_events(),
-        'month':month,
+        'month': month,
         'calendar': build_calendar(current_year, current_month)
     }
-    return render_template('home.html', **context)
 
+    save_cached_context(context)
+    return render_template('home.html', **context)
 
 
 

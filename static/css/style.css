@@ -438,7 +438,71 @@ body {
         margin-bottom: 5px;
         text-align: center;
       }
+.calendar-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+}
 
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.calendar-day {
+  min-height: 80px;
+  border: 1px solid #ddd;
+  padding: 5px;
+}
+
+.date {
+  font-weight: bold;
+}
+
+.event {
+  font-size: 0.8rem;
+  background: #eee;
+  margin-top: 2px;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.calendar-month {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* Mobile view */
+.event-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .calendar-header,
+  .calendar {
+    display: none;
+  }
+
+  .event-list {
+    display: block;
+  }
+
+  .event-item {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .event-date {
+    font-weight: bold;
+  }
+
+  .event-name {
+    margin-left: 5px;
+  }
+}
 /* Responsive */
 
 @media (max-width: 768px) {
