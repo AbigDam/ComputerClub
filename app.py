@@ -7,9 +7,7 @@ import requests
 import PyPDF2
 import re
 import calendar
-import requests
-import csv
-from io import StringIO
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(32))
 
